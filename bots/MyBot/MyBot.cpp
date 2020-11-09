@@ -18,12 +18,12 @@ class MyBot: public OthelloPlayer
         /**
          * Initialisation routines here
          * This could do anything from open up a cache of "best moves" to
-         * spawning a background processing thread. 
+         * spawning a background processing thread.
          */
         MyBot( Turn turn );
 
         /**
-         * Play something 
+         * Play something
          */
         virtual Move play( const OthelloBoard& board );
     private:
@@ -36,9 +36,14 @@ MyBot::MyBot( Turn turn )
 
 Move MyBot::play( const OthelloBoard& board )
 {
-    list<Move> moves = board.getValidMoves( turn );
+    auto moves = board.getValidMoves( turn );
     int randNo = rand() % moves.size();
-    list<Move>::iterator it = moves.begin();
+    auto it = moves.begin();
+
+    while(randNo>0) {
+        it++;
+        randNo--;
+    }
 
     return *it;
 }
@@ -56,5 +61,3 @@ extern "C" {
         delete bot;
     }
 }
-
-
