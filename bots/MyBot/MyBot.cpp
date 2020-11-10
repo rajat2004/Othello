@@ -13,8 +13,14 @@
 #include <vector>
 #include <list>
 #include <climits>
+#include <chrono>
+
 using namespace std;
 using namespace Desdemona;
+
+using millis = std::chrono::milliseconds;
+using std::chrono::duration_cast;
+using std::chrono::steady_clock;
 
 class MyBot: public OthelloPlayer
 {
@@ -31,13 +37,13 @@ class MyBot: public OthelloPlayer
          */
         virtual Move play( const OthelloBoard& board );
     private:
-        const int MAX_DEPTH = 2;
+        const int MAX_DEPTH = 6;
         const int BOARD_SIZE = 8;
 
-        Turn my_turn;
+        Turn orig_turn;
 
         Move minimaxDecision(const OthelloBoard &board, Turn &turn);
-        int minimaxValue(const OthelloBoard &board, const Turn &orig_turn, Turn &curr_turn, int depth);
+        int minimaxValue(const OthelloBoard &board, Turn &curr_turn, int depth, int alpha, int beta);
         int evaluate(const OthelloBoard &board, Turn &curr_turn);
 };
 
@@ -77,7 +83,7 @@ int MyBot::evaluate(const OthelloBoard &board, Turn &curr_turn)
     return tot_score;
 }
 
-int MyBot::minimaxValue(const OthelloBoard &board, const Turn &orig_turn, Turn &curr_turn, int depth)
+int MyBot::minimaxValue(const OthelloBoard &board, Turn &curr_turn, int depth, int alpha, int beta)
 {
     if (depth == MAX_DEPTH)
         return evaluate(board, curr_turn);
@@ -87,7 +93,7 @@ int MyBot::minimaxValue(const OthelloBoard &board, const Turn &orig_turn, Turn &
     auto all_moves = board.getValidMoves(curr_turn);
     if (all_moves.size()==0) {
         // Skip to next turn
-        return minimaxValue(board, orig_turn, opp_turn, depth+1);
+        return minimaxValue(board, opp_turn, depth+1, alpha, beta);
     }
 
     bool is_orig = curr_turn==orig_turn;
@@ -98,14 +104,22 @@ int MyBot::minimaxValue(const OthelloBoard &board, const Turn &orig_turn, Turn &
         copy_board.makeMove(curr_turn, move);
 
         // Now check for opponent turn
-        auto val = minimaxValue(copy_board, orig_turn, opp_turn, depth+1);
+        auto val = minimaxValue(copy_board, opp_turn, depth+1, alpha, beta);
         if (is_orig) {
             if (best_val < val)
                 best_val = val;
+
+            alpha = max(alpha, best_val);
+            if (beta <= alpha)
+                break;
         }
         else {
             if (best_val > val)
                 best_val = val;
+
+            beta = min(beta, best_val);
+            if (beta <= alpha)
+                break;
         }
     }
 
@@ -114,6 +128,8 @@ int MyBot::minimaxValue(const OthelloBoard &board, const Turn &orig_turn, Turn &
 
 Move MyBot::minimaxDecision(const OthelloBoard &board, Turn &turn)
 {
+    // auto t_seq_1 = steady_clock::now();
+
     auto all_moves = board.getValidMoves(turn);
     Move best_move = Move::pass();
     int best_val = INT_MIN;
@@ -128,18 +144,22 @@ Move MyBot::minimaxDecision(const OthelloBoard &board, Turn &turn)
         auto copy_board = board;
         copy_board.makeMove(turn, move);
 
-        auto eval_val = minimaxValue(copy_board, turn, opp_turn, 1);
+        auto eval_val = minimaxValue(copy_board, opp_turn, 1, INT_MIN, INT_MAX);
         if (eval_val > best_val) {
             best_val = eval_val;
             best_move = move;
         }
     }
 
+    // auto t_seq_2 = steady_clock::now();
+    // auto time1 = duration_cast<millis>(t_seq_2 - t_seq_1).count();
+    // cout << "Time: " << time1 << " milliseconds\n";
+
     return best_move;
 }
 
 MyBot::MyBot( Turn turn )
-    : OthelloPlayer( turn ), my_turn(turn)
+    : OthelloPlayer( turn ), orig_turn(turn)
 {
 }
 
@@ -156,7 +176,7 @@ Move MyBot::play( const OthelloBoard& board )
 
     // return *it;
 
-    return minimaxDecision(board, my_turn);
+    return minimaxDecision(board, orig_turn);
 }
 
 // The following lines are _very_ important to create a bot module for Desdemona
