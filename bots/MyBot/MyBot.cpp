@@ -37,8 +37,11 @@ class MyBot: public OthelloPlayer
          */
         virtual Move play( const OthelloBoard& board );
     private:
-        const int MAX_DEPTH = 6;
+        const int MAX_DEPTH = 4;
         const int BOARD_SIZE = 8;
+
+        const int POSITIONWEIGHT = 5;
+        const int MOBILITYWEIGHT = 15;
 
         Turn orig_turn;
 
@@ -50,35 +53,36 @@ class MyBot: public OthelloPlayer
 
 int MyBot::evaluate(const OthelloBoard &board, Turn &curr_turn)
 {
-    // return rand()%(INT_MAX);
     static vector<vector<int>> score {
-            {65, -3,  6,  4,  4,  6, -3, 65},
-            {-3, -29, 3,  1,  1,  3, -29,-3},
-            { 6,  3,  5,  3,  3,  5,  3,  6},
-            { 4,  1,  3,  1,  1,  3,  1,  4},
-            { 4,  1,  3,  1,  1,  3,  1,  4},
-            { 6,  3,  5,  3,  3,  5,  3,  6},
-            {-3, -29, 3,  1,  1,  3, -29,-3},
-            {65, -3,  6,  4,  4,  6, -3, 65},
+            {50, -1,  5,  2,  2,  5, -1, 50},
+            {-1, -10, 1,  1,  1,  1, -10,-1},
+            { 5,  1,  1,  1,  1,  1,  1,  5},
+            { 2,  1,  1,  0,  0,  1,  1,  2},
+            { 2,  1,  1,  0,  0,  1,  1,  2},
+            { 5,  1,  1,  1,  1,  1,  1,  5},
+            {-1, -10, 1,  1,  1,  1, -10,-1},
+            {50, -1,  5,  2,  2,  5, -1, 50},
     };
 
-    int tot_score = 0;
+    int pos_score = 0, tot_score = 0;
     auto opp_turn = other(curr_turn);
 
     for(int i=0; i<BOARD_SIZE; i++) {
         for(int j=0; j<BOARD_SIZE; j++) {
 
             if (board.get(i, j) == curr_turn)
-                tot_score += score[i][j];
+                pos_score += score[i][j];
             else if (board.get(i, j) == opp_turn)
-                tot_score -= score[i][j];
+                pos_score -= score[i][j];
 
         }
     }
 
-    tot_score += board.getValidMoves(curr_turn).size() - board.getValidMoves(opp_turn).size();
+    int mob_score = board.getValidMoves(curr_turn).size() - board.getValidMoves(opp_turn).size();
     int pieces_count = board.getBlackCount() - board.getRedCount();
-    tot_score += (curr_turn==BLACK) ? pieces_count : -1*pieces_count;
+    int pieces_score = (curr_turn==BLACK) ? pieces_count : -1*pieces_count;
+
+    tot_score = POSITIONWEIGHT*pos_score + MOBILITYWEIGHT*mob_score + pieces_score;
 
     return tot_score;
 }
@@ -140,7 +144,7 @@ Move MyBot::minimaxDecision(const OthelloBoard &board, Turn &turn)
         return Move::pass();
     }
 
-    for (auto &move : all_moves) {
+    for (const auto &move : all_moves) {
         auto copy_board = board;
         copy_board.makeMove(turn, move);
 
@@ -155,7 +159,7 @@ Move MyBot::minimaxDecision(const OthelloBoard &board, Turn &turn)
     // auto time1 = duration_cast<millis>(t_seq_2 - t_seq_1).count();
     // cout << "Time: " << time1 << " milliseconds\n";
 
-    return best_move;
+    return board.validateMove(turn, best_move) ? best_move : Move::pass();
 }
 
 MyBot::MyBot( Turn turn )
@@ -165,17 +169,6 @@ MyBot::MyBot( Turn turn )
 
 Move MyBot::play( const OthelloBoard& board )
 {
-    // auto moves = board.getValidMoves( turn );
-    // int randNo = rand() % moves.size();
-    // auto it = moves.begin();
-
-    // while(randNo>0) {
-    //     it++;
-    //     randNo--;
-    // }
-
-    // return *it;
-
     return minimaxDecision(board, orig_turn);
 }
 
